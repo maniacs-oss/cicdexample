@@ -5,12 +5,19 @@ timestamp() {
 	date +"%T"
 }
 
+# Temporary file for stderr redirects
+tmpfile=$(mktemp)
 
 # Go build
 build () {
-	echo "⏲️ 	$(timestamp): started build script..."
+	echo "⏲️	$(timestamp): started build script..."
 	echo "🏗️	$(timestamp): building cicdexample"
-	go build
+	go build 2>tmpfile
+	if [ -s tmpfile ]; then
+		cat tmpfile
+		echo "❌	$(timestamp): compilation error, exiting"
+		exit 1
+	fi
 }
 
 # Build a docker image
@@ -22,6 +29,8 @@ buildDocker() {
 # Deploy to Minikube using kubectl
 deploy() {
 	echo "🌧️	 $(timestamp): deploying to Minikube"
+	kubectl delete deployment example
+	kubectl delete service example
 	kubectl apply -f deploy.yml
 }
 
@@ -55,3 +64,4 @@ else
 		echo "🤔	$(timestamp): no arguments passed, type --help for a list of arguments"
 	fi
 fi
+rm -f tmpfile
